@@ -1,0 +1,90 @@
+version: "3.8"
+
+
+services:
+
+  # The init.sql file is automatically executed on first startup.
+  postgres:
+    image: postgres:15-alpine
+    container_name: crypto_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: crypto_db
+    ports:
+      - "5432:5432"              
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # Persist data between restarts
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql  # Auto-run schema
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crypto_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Zookeeper ──────────────────────────────────────────────────────────────
+  # Required by Kafka for cluster coordination and metadata management.
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: crypto_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # ── Kafka ──────────────────────────────────────────────────────────────────
+  # Message broker for streaming news headlines.
+  # Two listeners are configured:
+  #   PLAINTEXT       → internal Docker-to-Docker communication (kafka:29092)
+  #   PLAINTEXT_HOST  → external host-to-Kafka communication (localhost:9092)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: crypto_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"               # Exposed to host machine
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Streamlit Dashboard ────────────────────────────────────────────────────
+  # Serves the analytics dashboard on http://localhost:8501
+  # Uses Dockerfile.streamlit to build the Python environment.
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: crypto_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      # Override to use Docker service name instead of 'localhost'
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: crypto_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ── Named Volumes ──────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local

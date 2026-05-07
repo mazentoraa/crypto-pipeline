@@ -1,0 +1,28 @@
+# Environment secrets — never commit these
+.env
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+
+# Pytest cache
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes (local data)
+postgres_data/
+
+# Prefect internal
+.prefect/
