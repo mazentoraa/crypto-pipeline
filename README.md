@@ -1,6 +1,7 @@
 # Crypto & News Analytics Data Pipeline
 
 > An end-to-end data engineering pipeline built with Python, PostgreSQL, Apache Kafka, Prefect, and Streamlit — fully containerised with Docker.
+> The system continuously collects live market data, streams news headlines, stores everything in a relational database, transforms and enriches the raw data, and exposes actionable insights through an interactive web dashboard.
 
 ## Overview
 
