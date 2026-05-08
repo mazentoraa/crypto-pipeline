@@ -58,7 +58,7 @@ All Python services run inside containers — no local Python or virtualenv requ
 ### 1. Clone and configure
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/mazentoraa/crypto-pipeline.git
 cd crypto-pipeline
 cp .env.example .env
 ```
