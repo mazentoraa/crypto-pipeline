@@ -15,6 +15,7 @@ textblob==0.17.1
 
 # Workflow orchestration
 prefect==2.14.21
+griffe<1.0  # pin to pre-v1 where griffe.dataclasses still exists
 
 # Dashboard
 streamlit==1.29.0
